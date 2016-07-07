@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"mime"
+	"net/http"
 	"time"
 
 	"github.com/influxdata/telegraf"
@@ -19,17 +20,9 @@ import (
 	"github.com/prometheus/common/expfmt"
 )
 
-// PrometheusParser is an object for Parsing incoming metrics.
-type PrometheusParser struct {
-	// PromFormat
-	PromFormat map[string]string
-	// DefaultTags will be added to every parsed metric
-	//	DefaultTags map[string]string
-}
-
 // Parse returns a slice of Metrics from a text representation of a
 // metrics
-func (p *PrometheusParser) Parse(buf []byte) ([]telegraf.Metric, error) {
+func Parse(buf []byte, header http.Header) ([]telegraf.Metric, error) {
 	var metrics []telegraf.Metric
 	var parser expfmt.TextParser
 	// parse even if the buffer begins with a newline
@@ -38,8 +31,7 @@ func (p *PrometheusParser) Parse(buf []byte) ([]telegraf.Metric, error) {
 	buffer := bytes.NewBuffer(buf)
 	reader := bufio.NewReader(buffer)
 
-	// Get format
-	mediatype, params, err := mime.ParseMediaType(p.PromFormat["Content-Type"])
+	mediatype, params, err := mime.ParseMediaType(header.Get("Content-Type"))
 	// Prepare output
 	metricFamilies := make(map[string]*dto.MetricFamily)
 	if err == nil && mediatype == "application/vnd.google.protobuf" &&
@@ -105,29 +97,6 @@ func (p *PrometheusParser) Parse(buf []byte) ([]telegraf.Metric, error) {
 	}
 	return metrics, err
 }
-
-// Parse one line
-func (p *PrometheusParser) ParseLine(line string) (telegraf.Metric, error) {
-	metrics, err := p.Parse([]byte(line + "\n"))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(metrics) < 1 {
-		return nil, fmt.Errorf(
-			"Can not parse the line: %s, for data format: prometheus", line)
-	}
-
-	return metrics[0], nil
-}
-
-/*
-// Set default tags
-func (p *PrometheusParser) SetDefaultTags(tags map[string]string) {
-	p.DefaultTags = tags
-}
-*/
 
 // Get Quantiles from summary metric
 func makeQuantiles(m *dto.Metric) map[string]interface{} {
