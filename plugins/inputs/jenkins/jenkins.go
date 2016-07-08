@@ -3,6 +3,7 @@ package jenkins
 import (
 	"crypto/tls"
 	"net/http"
+	"strings"
 
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs"
@@ -62,6 +63,11 @@ func (j *Jenkins) Gather(acc telegraf.Accumulator) error {
 	}
 
 	err = j.gatherSlaves(acc, client)
+	if err != nil {
+		return err
+	}
+
+	err = j.gatherSlaveLabels(acc, client)
 	if err != nil {
 		return err
 	}
@@ -134,6 +140,42 @@ func (j *Jenkins) gatherSlaves(acc telegraf.Accumulator, client *gojenkins.Jenki
 	tags["url"] = j.URL
 
 	acc.AddFields("jenkins_slaves", fields, tags)
+
+	return nil
+}
+
+func (j *Jenkins) gatherSlaveLabels(acc telegraf.Accumulator, client *gojenkins.Jenkins) error {
+	fields := make(map[string]interface{})
+	tags := make(map[string]string)
+
+	slaves, err := client.GetComputers()
+	if err != nil {
+		return err
+	}
+
+	for _, slave := range slaves {
+		if slave.JnlpAgent {
+			conf, err := client.GetComputerConfig(slave.DisplayName)
+			if err != nil {
+				return err
+			}
+			labels := strings.Split(conf.Label, " ")
+			for _, label := range labels {
+				if val, ok := fields[label]; ok {
+					fields[label] = val.(int) + 1
+				} else {
+					fields[label] = 1
+				}
+			}
+		}
+	}
+
+	if j.Host != "" {
+		tags["host"] = j.Host
+	}
+	tags["url"] = j.URL
+
+	acc.AddFields("jenkins_labels", fields, tags)
 
 	return nil
 }
