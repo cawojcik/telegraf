@@ -102,10 +102,17 @@ func (j *Jenkins) gatherQueue(acc telegraf.Accumulator, client *gojenkins.Jenkin
 			if err != nil {
 				return err
 			}
-			if val, ok := qMap[j.AssignedNode]; ok {
-				qMap[j.AssignedNode] = val + 1
-			} else {
-				qMap[j.AssignedNode] = 1
+
+			//split label and filter out operators
+			labels := strings.Split(j.AssignedNode, " ")
+			for _, label := range labels {
+				if label != "&&" || label != "||" || label != "->" || label != "<->" {
+					if val, ok := qMap[j.AssignedNode]; ok {
+						qMap[j.AssignedNode] = val + 1
+					} else {
+						qMap[j.AssignedNode] = 1
+					}
+				}
 			}
 		}
 	}
