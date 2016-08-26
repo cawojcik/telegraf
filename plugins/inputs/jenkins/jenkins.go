@@ -9,6 +9,7 @@ import (
 	"github.com/influxdata/telegraf/plugins/inputs"
 
 	"github.com/yieldbot/golang-jenkins"
+	"fmt"
 )
 
 type Jenkins struct {
@@ -87,6 +88,7 @@ func (j *Jenkins) gatherQueue(acc telegraf.Accumulator, client *gojenkins.Jenkin
 	tags := make(map[string]string)
 
 	qSize := 0
+	qMap := make(map[string]int)
 
 	queue, err := client.GetQueue()
 	if err != nil {
@@ -96,12 +98,27 @@ func (j *Jenkins) gatherQueue(acc telegraf.Accumulator, client *gojenkins.Jenkin
 	for _, item := range queue.Items {
 		if item.Buildable {
 			qSize++
+			j, err := client.GetJobProperties(item.Task.Name)
+			if err != nil {
+				return err
+			}
+			if val, ok := qMap[j.AssignedNode]; ok {
+				qMap[j.AssignedNode] = val + 1
+			} else {
+				qMap[j.AssignedNode] = 1
+			}
 		}
 	}
 
+	fmt.Println(qMap)
 	fields["queue_size"] = qSize
 	if j.Host != "" {
 		tags["host"] = j.Host
+	}
+	if len(qMap) > 0 {
+		for key := range qMap {
+			fields[fmt.Sprintf("label_%s", key)] = qMap[key]
+		}
 	}
 	tags["url"] = j.URL
 
