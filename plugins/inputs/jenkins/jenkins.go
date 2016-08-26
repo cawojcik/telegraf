@@ -148,7 +148,6 @@ func (j *Jenkins) gatherSlaves(acc telegraf.Accumulator, client *gojenkins.Jenki
 	for _, slave := range slaves {
 		if slave.JnlpAgent {
 			slaveCount++
-
 			if !slave.Idle {
 				busyCount++
 			}
@@ -186,8 +185,19 @@ func (j *Jenkins) gatherSlaveLabels(acc telegraf.Accumulator, client *gojenkins.
 			for _, label := range labels {
 				if val, ok := fields[label]; ok {
 					fields[label] = val.(int) + 1
+					if !slave.Idle {
+						v := fields[fmt.Sprintf("%s_busy", label)]
+						if v != nil {
+							fields[fmt.Sprintf("%s_busy", label)] = v.(int) + 1
+						} else {
+							fields[fmt.Sprintf("%s_busy", label)] = 1
+						}
+					}
 				} else {
 					fields[label] = 1
+					if !slave.Idle {
+						fields[fmt.Sprintf("%s_busy", label)] = 1
+					}
 				}
 			}
 		}
