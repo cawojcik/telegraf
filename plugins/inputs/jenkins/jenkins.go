@@ -117,7 +117,6 @@ func (j *Jenkins) gatherQueue(acc telegraf.Accumulator, client *gojenkins.Jenkin
 		}
 	}
 
-	fmt.Println(qMap)
 	fields["queue_size"] = qSize
 	if j.Host != "" {
 		tags["host"] = j.Host
