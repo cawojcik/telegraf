@@ -8,8 +8,9 @@ import (
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs"
 
-	"github.com/yieldbot/golang-jenkins"
 	"fmt"
+
+	"github.com/yieldbot/golang-jenkins"
 )
 
 type Jenkins struct {
@@ -203,6 +204,7 @@ func (j *Jenkins) gatherSlaveLabels(acc telegraf.Accumulator, client *gojenkins.
 		}
 	}
 
+	fields["noop"] = 0
 	if j.Host != "" {
 		tags["host"] = j.Host
 	}
